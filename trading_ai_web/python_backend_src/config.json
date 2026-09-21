@@ -1,0 +1,23 @@
+{
+  "position_size": 1.0,
+  "risk_reward_ratio": 2.0,
+  "lookback_days": 100,
+  "confidence_threshold": 0.55,
+  "trading_symbols": [
+    "BTC-USD",
+    "AAPL",
+    "MSFT",
+    "GOOGL",
+    "TSLA"
+  ],
+  "analysis_parameters": {
+    "ma_periods": [20, 50, 200],
+    "rsi_period": 14,
+    "macd_fast": 12,
+    "macd_slow": 26,
+    "macd_signal": 9,
+    "bollinger_period": 20,
+    "bollinger_std": 2.0,
+    "atr_period": 14
+  }
+}
