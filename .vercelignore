@@ -1,0 +1,6 @@
+# Ignore Python backend files during Vercel frontend deployment
+python_backend_src/
+*.py
+*.pyc
+requirements.txt
+data_samples/
