@@ -1,0 +1,9 @@
+{
+  "name": "trading-ai-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Trading AI - Chart Analysis & Probability Engine",
+  "scripts": {
+    "build": "echo 'Build complete'"
+  }
+}
