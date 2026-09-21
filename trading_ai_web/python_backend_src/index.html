@@ -1,0 +1,1855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trading AI — Chart Analysis &amp; Probability Engine</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📈</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;650;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+:root {
+  --ink-950: #080b10;
+  --ink-900: #0b0f16;
+  --ink-800: #111722;
+  --ink-700: #182233;
+  --ink-600: #22304a;
+  --line: #223047;
+  --line-soft: #17202f;
+  --text: #e7ecf3;
+  --text-dim: #9aa7bb;
+  --text-faint: #647089;
+  --jade: #33d6a6;
+  --jade-dim: #1a8f6f;
+  --coral: #ff6b5e;
+  --coral-dim: #b24339;
+  --amber: #e8b33d;
+  --amber-dim: #a67c26;
+  --blue: #5aa9ff;
+  --font-ui: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+
+[data-theme="light"] {
+  --ink-950: #f3f4f7;
+  --ink-900: #ffffff;
+  --ink-800: #f7f8fa;
+  --ink-700: #eef0f4;
+  --ink-600: #dfe3ea;
+  --line: #dfe3ea;
+  --line-soft: #e9ebf0;
+  --text: #141922;
+  --text-dim: #4c5566;
+  --text-faint: #7c869a;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+
+body {
+  font-family: var(--font-ui);
+  background: var(--ink-950);
+  color: var(--text);
+  min-height: 100%;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: var(--jade-dim); color: #fff; }
+
+a { color: var(--blue); }
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  min-height: 100vh;
+}
+
+@media (max-width: 980px) {
+  .app-shell { grid-template-columns: 1fr; }
+  .sidebar { position: relative; height: auto; border-right: none; border-bottom: 1px solid var(--line); }
+}
+
+/* ---------------- Sidebar ---------------- */
+.sidebar {
+  background: var(--ink-900);
+  border-right: 1px solid var(--line);
+  padding: 22px 20px 32px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.brand-mark {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  color: var(--jade);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-mark .dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--jade);
+  box-shadow: 0 0 8px var(--jade);
+}
+
+h1.title {
+  font-size: 20px;
+  font-weight: 650;
+  margin: 10px 0 2px;
+  letter-spacing: -0.01em;
+}
+
+.subtitle {
+  font-size: 12.5px;
+  color: var(--text-faint);
+  margin-bottom: 22px;
+}
+
+.theme-toggle {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+}
+.theme-toggle:hover { border-color: var(--text-faint); color: var(--text); }
+
+.section-label {
+  font-size: 11px;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+  margin: 20px 0 8px;
+}
+
+.pillbar {
+  display: flex;
+  gap: 4px;
+  background: var(--ink-800);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  margin-bottom: 12px;
+}
+.pillbar button {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  padding: 7px 4px;
+  font-size: 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-weight: 500;
+}
+.pillbar button.active { background: var(--ink-700); color: var(--text); }
+
+.input-pane { display: none; }
+.input-pane.active { display: block; }
+
+.field { margin-bottom: 12px; }
+.field label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 5px;
+}
+.field .hint { font-size: 11px; color: var(--text-faint); margin-top: 4px; }
+
+input[type="text"], input[type="number"], select, textarea {
+  width: 100%;
+  background: var(--ink-800);
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 9px 10px;
+  font-size: 13px;
+  font-family: var(--font-mono);
+}
+select { font-family: var(--font-ui); }
+textarea { font-family: var(--font-mono); font-size: 12px; resize: vertical; min-height: 90px; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--jade-dim); }
+
+.dropzone {
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius-sm);
+  padding: 22px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease;
+}
+.dropzone:hover, .dropzone.drag { border-color: var(--jade-dim); background: rgba(51,214,166,0.05); }
+.dropzone .icon { font-size: 22px; margin-bottom: 6px; }
+.dropzone .fname { font-family: var(--font-mono); font-size: 12px; color: var(--jade); margin-top: 6px; }
+.dropzone p { font-size: 12px; color: var(--text-faint); }
+
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+.run-btn {
+  width: 100%;
+  margin-top: 18px;
+  background: linear-gradient(180deg, var(--jade) 0%, var(--jade-dim) 100%);
+  color: #05140f;
+  font-weight: 700;
+  font-size: 13.5px;
+  border: none;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  letter-spacing: 0.01em;
+}
+.run-btn:hover { filter: brightness(1.06); }
+.run-btn:active { filter: brightness(0.94); }
+.run-btn:disabled { opacity: 0.55; cursor: progress; }
+
+.status-line {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-faint);
+  margin-top: 10px;
+  min-height: 16px;
+}
+.status-line.err { color: var(--coral); }
+
+details.adv { margin-top: 14px; border-top: 1px solid var(--line-soft); padding-top: 10px; }
+details.adv summary {
+  cursor: pointer; font-size: 12px; color: var(--text-dim);
+  font-family: var(--font-mono);
+}
+details.adv .field { margin-top: 12px; }
+
+/* ---------------- Main ---------------- */
+.main {
+  padding: 26px 30px 60px;
+  max-width: 1180px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 90px 10px;
+  max-width: 520px;
+}
+.empty-state .big { font-size: 44px; }
+.empty-state h2 { font-size: 21px; font-weight: 600; }
+.empty-state p { color: var(--text-dim); font-size: 13.5px; }
+
+/* Ticker strip */
+.ticker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 22px;
+  padding: 16px 20px;
+  background: var(--ink-900);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  margin-bottom: 18px;
+}
+.ticker .price {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 600;
+}
+.ticker .sub { font-size: 11.5px; color: var(--text-faint); }
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+.badge.up { background: rgba(51,214,166,0.12); color: var(--jade); border: 1px solid rgba(51,214,166,0.35); }
+.badge.down { background: rgba(255,107,94,0.12); color: var(--coral); border: 1px solid rgba(255,107,94,0.35); }
+.badge.flat { background: rgba(154,167,187,0.12); color: var(--text-dim); border: 1px solid var(--line); }
+
+.metric-strip { display: flex; gap: 26px; margin-left: auto; flex-wrap: wrap; }
+.metric-strip .m { text-align: right; }
+.metric-strip .m .v { font-family: var(--font-mono); font-size: 14.5px; font-weight: 600; }
+.metric-strip .m .l { font-size: 10.5px; color: var(--text-faint); }
+
+/* Cards / sections */
+.card {
+  background: var(--ink-900);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 18px;
+}
+.card h3 {
+  font-size: 14px;
+  font-weight: 650;
+  margin-bottom: 4px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.card .card-note { font-size: 12px; color: var(--text-faint); margin-bottom: 14px; }
+
+.chart-wrap { position: relative; height: 300px; }
+.chart-wrap.small { height: 150px; }
+.charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 760px) { .charts-grid { grid-template-columns: 1fr; } }
+
+.overlay-select { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--text-dim); }
+.overlay-select select { width: auto; padding: 5px 8px; font-size: 12px; }
+
+/* Indicators grid */
+.indicator-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+.ind-box {
+  background: var(--ink-800);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+.ind-box .l { font-size: 10.5px; color: var(--text-faint); font-family: var(--font-mono); }
+.ind-box .v { font-family: var(--font-mono); font-size: 15px; font-weight: 600; margin-top: 3px; }
+.ind-box .v.jade { color: var(--jade); }
+.ind-box .v.coral { color: var(--coral); }
+.ind-box .v.amber { color: var(--amber); }
+
+/* Probability breakdown */
+.prob-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 760px) { .prob-cols { grid-template-columns: 1fr; } }
+.prob-col h4 {
+  font-size: 12.5px;
+  font-family: var(--font-mono);
+  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 7px;
+}
+.dir-dot { width: 8px; height: 8px; border-radius: 50%; }
+.dir-dot.long { background: var(--jade); }
+.dir-dot.short { background: var(--coral); }
+
+.prob-source { margin-bottom: 10px; }
+.prob-source .top { display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 4px; }
+.prob-source .top .name { color: var(--text-dim); }
+.prob-source .top .val { font-family: var(--font-mono); font-weight: 600; }
+.prob-track { height: 6px; background: var(--ink-700); border-radius: 4px; overflow: hidden; position: relative; }
+.prob-fill { height: 100%; border-radius: 4px; background: var(--blue); }
+.prob-ci { position: absolute; top: -2px; bottom: -2px; border-left: 1px solid rgba(255,255,255,0.5); border-right: 1px solid rgba(255,255,255,0.5); }
+
+.blended-readout {
+  margin-top: 14px; padding: 12px 14px;
+  background: var(--ink-800); border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+  display: flex; align-items: baseline; justify-content: space-between;
+}
+.blended-readout .big { font-family: var(--font-mono); font-size: 24px; font-weight: 700; }
+.blended-readout .lbl { font-size: 11px; color: var(--text-faint); }
+
+/* Scenario cards */
+.scenarios-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+@media (max-width: 900px) { .scenarios-grid { grid-template-columns: 1fr; } }
+.scenario-card {
+  background: var(--ink-800);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 15px;
+}
+.scenario-card.long { border-left-color: var(--jade); }
+.scenario-card.short { border-left-color: var(--coral); }
+.scenario-card.wait { border-left-color: var(--text-faint); }
+.scenario-card.best {
+  box-shadow: 0 0 0 1px var(--amber), 0 8px 24px rgba(232,179,61,0.08);
+}
+.scenario-card .sc-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.scenario-card .sc-head .ttl { font-size: 13px; font-weight: 650; }
+.scenario-card .sc-head .rank { font-family: var(--font-mono); font-size: 11px; color: var(--amber); }
+.sc-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin-bottom: 4px; }
+.sc-rows .r .l { font-size: 10.5px; color: var(--text-faint); }
+.sc-rows .r .v { font-family: var(--font-mono); font-size: 13px; font-weight: 600; }
+.sc-divider { height: 1px; background: var(--line-soft); margin: 10px 0; }
+.sc-note { font-size: 11.5px; color: var(--text-dim); margin-top: 8px; }
+.ev-pos { color: var(--jade); }
+.ev-neg { color: var(--coral); }
+
+/* Backtest table */
+table.bt-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.bt-table th, table.bt-table td {
+  text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line-soft);
+}
+table.bt-table th { color: var(--text-faint); font-weight: 500; font-size: 11px; font-family: var(--font-mono); }
+table.bt-table td { font-family: var(--font-mono); }
+table.bt-table td.lbl-cell { font-family: var(--font-ui); color: var(--text-dim); }
+
+.methodology { font-size: 11.5px; color: var(--text-faint); margin-top: 12px; line-height: 1.6; }
+
+/* Position sizing */
+.sizing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 760px) { .sizing-grid { grid-template-columns: 1fr; } }
+.sizing-box { background: var(--ink-800); border: 1px solid var(--line-soft); border-radius: var(--radius-sm); padding: 14px; }
+.sizing-box h5 { font-size: 12px; color: var(--text-dim); margin-bottom: 10px; font-family: var(--font-mono); }
+.sizing-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 12.5px; border-bottom: 1px dashed var(--line-soft); }
+.sizing-row:last-child { border-bottom: none; }
+.sizing-row .v { font-family: var(--font-mono); font-weight: 600; }
+
+/* Export row */
+.export-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.export-row button {
+  background: var(--ink-800);
+  border: 1px solid var(--line);
+  color: var(--text);
+  padding: 9px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  cursor: pointer;
+  font-family: var(--font-ui);
+}
+.export-row button:hover { border-color: var(--jade-dim); color: var(--jade); }
+
+.disclaimer {
+  font-size: 11.5px;
+  color: var(--text-faint);
+  border-top: 1px solid var(--line-soft);
+  padding-top: 14px;
+  margin-top: 4px;
+  line-height: 1.6;
+}
+.disclaimer strong { color: var(--text-dim); }
+
+.data-quality-warn {
+  background: rgba(232,179,61,0.08);
+  border: 1px solid rgba(232,179,61,0.35);
+  color: var(--amber);
+  padding: 10px 13px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  margin-bottom: 16px;
+}
+
+.how-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+.how-grid .h { font-size: 12.5px; font-weight: 650; margin-bottom: 5px; }
+.how-grid .p { font-size: 12px; color: var(--text-dim); }
+
+.spinner {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.25); border-top-color: #05140f;
+  animation: spin 0.7s linear infinite; display: inline-block; vertical-align: -3px; margin-right: 7px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media print {
+  .sidebar, .export-row, .theme-toggle { display: none !important; }
+  .app-shell { grid-template-columns: 1fr; }
+  body { background: #fff; color: #111; }
+  .card, .ticker, .scenario-card, .ind-box, .sizing-box { border-color: #ccc !important; background: #fff !important; }
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--ink-600); border-radius: 6px; }
+
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"><span class="dot"></span>TRADING AI</div>
+      <button class="theme-toggle" id="themeToggle">light mode</button>
+    </div>
+    <h1 class="title">Chart &amp; Probability Engine</h1>
+    <div class="subtitle">Real technical analysis + a three-source probability model, run entirely in your browser.</div>
+
+    <div class="section-label">01 — Data source</div>
+    <div class="pillbar" data-group="input">
+      <button class="active" data-target="paneUpload">Upload CSV</button>
+      <button data-target="panePaste">Paste CSV</button>
+      <button data-target="paneSample">Sample data</button>
+    </div>
+
+    <div class="input-pane active" id="paneUpload">
+      <div class="dropzone" id="dropzone">
+        <div class="icon">📄</div>
+        <p id="dzLabel">Drop an OHLCV CSV here, or click to browse</p>
+        <div class="fname" id="dzFname" style="display:none"></div>
+      </div>
+      <input type="file" id="csvFile" accept=".csv,text/csv" style="display:none">
+      <p class="hint">Needs Date (optional), Open, High, Low, Close, Volume (optional) columns — the same format the CSV-analysis mode in the original Python tool expects.</p>
+    </div>
+
+    <div class="input-pane" id="panePaste">
+      <div class="field">
+        <label for="pasteArea">Paste CSV text</label>
+        <textarea id="pasteArea" placeholder="Date,Open,High,Low,Close,Volume&#10;2026-01-01,100.2,101.8,99.5,101.1,2300000&#10;..."></textarea>
+      </div>
+    </div>
+
+    <div class="input-pane" id="paneSample">
+      <div class="field">
+        <label for="sampleTrend">Synthetic trend</label>
+        <select id="sampleTrend">
+          <option value="uptrend">Uptrend</option>
+          <option value="downtrend">Downtrend</option>
+          <option value="sideways">Sideways / chop</option>
+          <option value="volatile">Volatile (high-vol chop)</option>
+        </select>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="sampleDays">Bars</label><input type="number" id="sampleDays" value="220" min="60" max="1000"></div>
+        <div class="field"><label for="sampleVol">Daily vol %</label><input type="number" id="sampleVol" value="1.8" min="0.2" max="8" step="0.1"></div>
+      </div>
+      <div class="field"><label for="sampleStart">Starting price</label><input type="number" id="sampleStart" value="100" min="0.5" step="0.1"></div>
+      <button class="run-btn" id="genBtn" style="background:linear-gradient(180deg,#5aa9ff,#2f6fb8); color:#071624;">Generate sample data</button>
+      <p class="hint">Random-walk generator for trying the tool — swap in your own CSV for a real read on real data.</p>
+    </div>
+
+    <details class="adv">
+      <summary>02 — Model configuration</summary>
+      <div class="row2">
+        <div class="field"><label for="cfgRR">Fallback R:R target</label><input type="number" id="cfgRR" value="2.0" step="0.1" min="0.5"></div>
+        <div class="field"><label for="cfgAtrPeriod">ATR period</label><input type="number" id="cfgAtrPeriod" value="14" min="3" max="60"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="cfgSrWindow">S/R swing window</label><input type="number" id="cfgSrWindow" value="5" min="2" max="20"></div>
+        <div class="field"><label for="cfgHorizon">Horizon (days)</label><input type="number" id="cfgHorizon" value="20" min="3" max="90"></div>
+      </div>
+      <div class="field"><label for="cfgMcPaths">Monte Carlo paths</label><input type="number" id="cfgMcPaths" value="8000" min="500" max="20000" step="500"></div>
+    </details>
+
+    <details class="adv" open>
+      <summary>03 — Position sizing inputs</summary>
+      <div class="row2">
+        <div class="field"><label for="cfgAccount">Account size ($)</label><input type="number" id="cfgAccount" value="10000" min="100" step="100"></div>
+        <div class="field"><label for="cfgRiskPct">Risk / trade (%)</label><input type="number" id="cfgRiskPct" value="1" min="0.1" max="10" step="0.1"></div>
+      </div>
+    </details>
+
+    <button class="run-btn" id="runBtn">Run analysis</button>
+    <div class="status-line" id="statusMsg"></div>
+  </aside>
+
+  <main class="main">
+    <div class="empty-state" id="emptyState">
+      <div class="big">📈</div>
+      <h2>No chart loaded yet</h2>
+      <p>Upload an OHLCV CSV, paste one in, or generate a synthetic sample from the left panel, then run the analysis. Every indicator, probability and backtest number below is computed live in your browser from that data — nothing is hard-coded.</p>
+    </div>
+
+    <div id="results" hidden>
+      <div class="data-quality-warn" id="warnBox" style="display:none"></div>
+
+      <div class="ticker">
+        <div>
+          <div class="sub" id="tickerSymbol">—</div>
+          <div class="price" id="tickerPrice">$0.00</div>
+        </div>
+        <span class="badge flat" id="tickerBadge">—</span>
+        <div class="metric-strip">
+          <div class="m"><div class="v" id="mBars">0</div><div class="l">bars</div></div>
+          <div class="m"><div class="v" id="mVol">0%</div><div class="l">ann. volatility</div></div>
+          <div class="m"><div class="v" id="mRR">—</div><div class="l">daily drift</div></div>
+          <div class="m"><div class="v" id="mR2">0</div><div class="l">trend R² (60d)</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>
+          Price, moving averages &amp; Bollinger Bands
+          <span class="overlay-select">Overlay scenario:
+            <select id="overlaySelect">
+              <option value="none">None</option>
+              <option value="long">Long (entry/stop/target)</option>
+              <option value="short">Short (entry/stop/target)</option>
+            </select>
+          </span>
+        </h3>
+        <div class="card-note">MA20 / MA50 / MA200, 20-period Bollinger Bands (2σ), and swing-based support/resistance feed directly into the scenarios below.</div>
+        <div class="chart-wrap"><canvas id="priceChart"></canvas></div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="card">
+          <h3>RSI (14)</h3>
+          <div class="chart-wrap small"><canvas id="rsiChart"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>MACD (12, 26, 9)</h3>
+          <div class="chart-wrap small"><canvas id="macdChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Technical indicators</h3>
+        <div class="indicator-grid" id="indicatorGrid"></div>
+      </div>
+
+      <div class="card">
+        <h3>Probability breakdown</h3>
+        <div class="card-note">Each scenario's win probability blends four independent estimates, weighted by how precisely each one is known (inverse-variance weighting for the two estimates that carry a standard error).</div>
+        <div class="prob-cols" id="probPanel"></div>
+      </div>
+
+      <div class="card">
+        <h3>Trading scenarios</h3>
+        <div class="card-note">Ranked by expected value per unit. The checkmark marks the top-ranked scenario.</div>
+        <div class="scenarios-grid" id="scenariosGrid"></div>
+      </div>
+
+      <div class="card">
+        <h3>Walk-forward backtest</h3>
+        <div class="card-note">The empirical win rate — the same rule, replayed against your actual historical bars.</div>
+        <div id="backtestBody"></div>
+      </div>
+
+      <div class="card">
+        <h3>Position sizing</h3>
+        <div class="card-note">Fixed-fractional sizing from your risk budget, alongside a Kelly-criterion cross-check (half-Kelly, capped at 25% of account, is the commonly used practical fraction — full Kelly is shown in the scenario cards above and is usually too aggressive to trade).</div>
+        <div class="sizing-grid" id="sizingGrid"></div>
+      </div>
+
+      <div class="card">
+        <h3>Export</h3>
+        <div class="export-row">
+          <button id="exportJsonBtn">Export full analysis (JSON)</button>
+          <button id="exportCsvBtn">Export scenarios (CSV)</button>
+          <button id="printBtn">Print report</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 6px;">
+      <h3>How this works</h3>
+      <div class="how-grid">
+        <div><div class="h">1. Technical analysis</div><div class="p">Moving averages, RSI, MACD, Bollinger Bands, ATR and swing-based support/resistance, computed from your OHLCV data.</div></div>
+        <div><div class="h">2. Trend detection</div><div class="p">Price-vs-MA ordering classifies uptrend / downtrend / sideways; a 60-day linear regression R² and t-stat cross-check the strength.</div></div>
+        <div><div class="h">3. Analytic probability</div><div class="p">A closed-form Brownian-motion-with-drift barrier formula estimates the odds of hitting the target before the stop.</div></div>
+        <div><div class="h">4. Monte Carlo simulation</div><div class="p">Thousands of simulated GBM price paths under your chosen horizon cross-check the analytic estimate, with a 95% confidence interval.</div></div>
+        <div><div class="h">5. Walk-forward backtest</div><div class="p">The exact same rule is replayed across your historical bars to get a real, data-driven win rate — not just a model.</div></div>
+        <div><div class="h">6. Blend, rank &amp; size</div><div class="p">The four probability sources are blended by precision, scenarios are ranked by expected value, and position size follows from your risk budget and a Kelly cross-check.</div></div>
+      </div>
+    </div>
+
+    <div class="disclaimer">
+      <strong>Educational tool only — not financial advice.</strong> Every probability here comes from a model
+      (Brownian-motion assumptions, historical volatility, a finite backtest sample) applied to historical price data;
+      none of it predicts the future with certainty, and small samples produce wide confidence intervals. Past
+      performance does not guarantee future results. Always use a stop loss, size positions with real risk
+      management, and do your own research before risking real capital.
+    </div>
+  </main>
+</div>
+
+<script>
+/* =====================================================================
+   TRADING AI — QUANT ENGINE
+   Pure functions, no DOM. Ported + extended from the original Python
+   (chart_analyzer.py, pnl_predictor.py, generate_sample_data.py) with a
+   real probability core added on top of the original heuristic model:
+
+     1. Analytic barrier-hitting probability (Brownian motion with drift,
+        two absorbing barriers — closed-form via the exponential
+        martingale / "gambler's ruin with drift" solution)
+     2. Monte Carlo simulation of the same barrier problem under GBM,
+        with a 95% confidence interval on the estimate
+     3. Walk-forward empirical backtest on the ACTUAL historical bars
+        (the "based on charts, true output" requirement) — replays the
+        same entry/stop/target rule across history and measures the
+        real win rate, expectancy and profit factor
+     4. A trend-conditioned prior (the original heuristic) blended with
+        the three data-driven estimates, weighted by sample size /
+        precision, giving one final "blended probability"
+
+   Everything here is deterministic given the same input array except
+   the Monte Carlo step (which is why it reports its own std-error).
+   ===================================================================== */
+
+const Engine = (() => {
+
+  // ---------------------------------------------------------------
+  // Basic array stats
+  // ---------------------------------------------------------------
+  const mean = (arr) => arr.reduce((a, b) => a + b, 0) / arr.length;
+
+  const stdev = (arr, ddof = 1) => {
+    if (arr.length < 2) return 0;
+    const m = mean(arr);
+    const ss = arr.reduce((a, b) => a + (b - m) * (b - m), 0);
+    return Math.sqrt(ss / (arr.length - ddof));
+  };
+
+  const logReturns = (closes) => {
+    const r = [];
+    for (let i = 1; i < closes.length; i++) r.push(Math.log(closes[i] / closes[i - 1]));
+    return r;
+  };
+
+  // ---------------------------------------------------------------
+  // Rolling helpers (NaN-padded like pandas .rolling())
+  // ---------------------------------------------------------------
+  function rollingMean(arr, period) {
+    const out = new Array(arr.length).fill(NaN);
+    let sum = 0;
+    for (let i = 0; i < arr.length; i++) {
+      sum += arr[i];
+      if (i >= period) sum -= arr[i - period];
+      if (i >= period - 1) out[i] = sum / period;
+    }
+    return out;
+  }
+
+  function rollingStd(arr, period) {
+    const out = new Array(arr.length).fill(NaN);
+    for (let i = period - 1; i < arr.length; i++) {
+      const window = arr.slice(i - period + 1, i + 1);
+      out[i] = stdev(window, 1);
+    }
+    return out;
+  }
+
+  // EWM mean matching pandas .ewm(span=n).mean() (adjust=True, recursive form)
+  function ewm(arr, span) {
+    const alpha = 2 / (span + 1);
+    const out = new Array(arr.length).fill(NaN);
+    let numerator = 0, denominator = 0;
+    for (let i = 0; i < arr.length; i++) {
+      numerator = arr[i] + (1 - alpha) * numerator;
+      denominator = 1 + (1 - alpha) * denominator;
+      out[i] = numerator / denominator;
+    }
+    return out;
+  }
+
+  // ---------------------------------------------------------------
+  // Technical indicators (mirrors chart_analyzer.py exactly)
+  // ---------------------------------------------------------------
+  function sma(closes, period) { return rollingMean(closes, period); }
+
+  function rsi(closes, period = 14) {
+    const delta = [NaN];
+    for (let i = 1; i < closes.length; i++) delta.push(closes[i] - closes[i - 1]);
+    const gains = delta.map(d => (isNaN(d) ? NaN : Math.max(d, 0)));
+    const losses = delta.map(d => (isNaN(d) ? NaN : Math.max(-d, 0)));
+    const avgGain = rollingMean(gains.map(v => (isNaN(v) ? 0 : v)), period);
+    const avgLoss = rollingMean(losses.map(v => (isNaN(v) ? 0 : v)), period);
+    const out = new Array(closes.length).fill(NaN);
+    for (let i = period; i < closes.length; i++) {
+      if (avgLoss[i] === 0) { out[i] = 100; continue; }
+      const rs = avgGain[i] / avgLoss[i];
+      out[i] = 100 - 100 / (1 + rs);
+    }
+    return out;
+  }
+
+  function macd(closes, fast = 12, slow = 26, signal = 9) {
+    const emaFast = ewm(closes, fast);
+    const emaSlow = ewm(closes, slow);
+    const macdLine = closes.map((_, i) => emaFast[i] - emaSlow[i]);
+    const signalLine = ewm(macdLine, signal);
+    const hist = macdLine.map((v, i) => v - signalLine[i]);
+    return { macdLine, signalLine, hist };
+  }
+
+  function bollinger(closes, period = 20, stdDevMult = 2) {
+    const middle = rollingMean(closes, period);
+    const sd = rollingStd(closes, period);
+    const upper = middle.map((m, i) => m + stdDevMult * sd[i]);
+    const lower = middle.map((m, i) => m - stdDevMult * sd[i]);
+    return { upper, middle, lower };
+  }
+
+  function atr(highs, lows, closes, period = 14) {
+    const tr = new Array(closes.length).fill(NaN);
+    for (let i = 0; i < closes.length; i++) {
+      const hl = highs[i] - lows[i];
+      if (i === 0) { tr[i] = hl; continue; }
+      const hc = Math.abs(highs[i] - closes[i - 1]);
+      const lc = Math.abs(lows[i] - closes[i - 1]);
+      tr[i] = Math.max(hl, hc, lc);
+    }
+    return rollingMean(tr, period);
+  }
+
+  // Swing high/low support & resistance, matching the centered-window
+  // logic in chart_analyzer.py's detect_support_resistance()
+  function supportResistance(highs, lows, window = 5) {
+    const resistancePts = [];
+    const supportPts = [];
+    for (let i = window; i < highs.length - window; i++) {
+      const hSlice = highs.slice(i - window, i + window + 1);
+      const lSlice = lows.slice(i - window, i + window + 1);
+      if (highs[i] === Math.max(...hSlice)) resistancePts.push({ idx: i, price: highs[i] });
+      if (lows[i] === Math.min(...lSlice)) supportPts.push({ idx: i, price: lows[i] });
+    }
+    const support = supportPts.slice(-5).map(p => p.price).sort((a, b) => a - b);
+    const resistance = resistancePts.slice(-5).map(p => p.price).sort((a, b) => b - a);
+    return {
+      support_levels: support,
+      resistance_levels: resistance,
+      support_points: supportPts,
+      resistance_points: resistancePts
+    };
+  }
+
+  // Simple linear regression of closes vs. bar index, with R^2 and a
+  // t-statistic for the slope — used as a statistical trend-strength
+  // check to complement the moving-average trend rule.
+  function linearRegression(y) {
+    const n = y.length;
+    const x = Array.from({ length: n }, (_, i) => i);
+    const mx = mean(x), my = mean(y);
+    let sxy = 0, sxx = 0, syy = 0;
+    for (let i = 0; i < n; i++) {
+      sxy += (x[i] - mx) * (y[i] - my);
+      sxx += (x[i] - mx) * (x[i] - mx);
+      syy += (y[i] - my) * (y[i] - my);
+    }
+    const slope = sxy / sxx;
+    const intercept = my - slope * mx;
+    const r2 = syy === 0 ? 0 : (sxy * sxy) / (sxx * syy);
+    // residual standard error -> SE of slope -> t-stat
+    let sse = 0;
+    for (let i = 0; i < n; i++) {
+      const yhat = intercept + slope * x[i];
+      sse += (y[i] - yhat) ** 2;
+    }
+    const dof = Math.max(n - 2, 1);
+    const s2 = sse / dof;
+    const seSlope = Math.sqrt(s2 / sxx);
+    const tStat = seSlope === 0 ? 0 : slope / seSlope;
+    return { slope, intercept, r2, tStat };
+  }
+
+  function identifyTrend(closes, ma20Arr, ma50Arr, ma200Arr) {
+    const n = closes.length - 1;
+    const price = closes[n];
+    const ma20 = ma20Arr[n], ma50 = ma50Arr[n], ma200 = ma200Arr[n];
+    let trend, strength;
+    if (price > ma20 && ma20 > ma50 && ma50 > ma200) { trend = 'STRONG UPTREND'; strength = 0.95; }
+    else if (price > ma20 && ma20 > ma50) { trend = 'UPTREND'; strength = 0.75; }
+    else if (price < ma20 && ma20 < ma50 && ma50 < ma200) { trend = 'STRONG DOWNTREND'; strength = -0.95; }
+    else if (price < ma20 && ma20 < ma50) { trend = 'DOWNTREND'; strength = -0.75; }
+    else { trend = 'SIDEWAYS'; strength = 0; }
+    return { trend, strength };
+  }
+
+  // ---------------------------------------------------------------
+  // PROBABILITY CORE
+  // ---------------------------------------------------------------
+
+  // 1) Analytic closed-form barrier-hitting probability.
+  //    Model log-price as Brownian motion with drift: X_t = mu*t + sigma*W_t.
+  //    Absorbing barriers at -a (stop, a>0) and +b (target, b>0), both
+  //    measured in log-space distance from the current price.
+  //    Using the exponential martingale exp(-theta*X_t), theta=2*mu/sigma^2,
+  //    optional stopping gives the classic result:
+  //        p(hit b before -a) = (1 - e^{theta*a}) / (e^{-theta*b} - e^{theta*a})
+  //    As mu -> 0 this correctly limits to p = a/(a+b) (gambler's ruin).
+  function analyticBarrierProbability(S0, stopPrice, targetPrice, muDaily, sigmaDaily) {
+    if (sigmaDaily <= 0) sigmaDaily = 1e-6;
+    const isLong = targetPrice > stopPrice;
+    // Distances in log space, both positive by construction
+    let a, b; // a = distance to stop (loss barrier), b = distance to target (win barrier)
+    if (isLong) {
+      a = Math.log(S0 / stopPrice);     // stop below price
+      b = Math.log(targetPrice / S0);   // target above price
+    } else {
+      a = Math.log(stopPrice / S0);     // stop above price (short)
+      b = Math.log(S0 / targetPrice);   // target below price (short)
+      muDaily = -muDaily;               // mirror drift for the short direction
+    }
+    a = Math.max(a, 1e-9);
+    b = Math.max(b, 1e-9);
+    const theta = (2 * muDaily) / (sigmaDaily * sigmaDaily);
+
+    // theta ~ 0 -> use the no-drift limit directly (avoids 0/0)
+    if (Math.abs(theta) < 1e-8) {
+      return clamp(a / (a + b), 0, 1);
+    }
+    const num = 1 - Math.exp(theta * a);
+    const den = Math.exp(-theta * b) - Math.exp(theta * a);
+    let p = num / den;
+    if (!isFinite(p) || isNaN(p)) p = clamp(a / (a + b), 0, 1);
+    return clamp(p, 0, 1);
+  }
+
+  // 2) Monte Carlo simulation of the same barrier-hitting problem under
+  //    discretized GBM, checked bar-by-bar over a finite trading horizon
+  //    (captures "give up and it expires" risk that the infinite-horizon
+  //    analytic formula ignores). Returns probability + 95% CI (normal
+  //    approximation to a Bernoulli proportion).
+  function monteCarloBarrierProbability(S0, stopPrice, targetPrice, muDaily, sigmaDaily, horizonDays, numPaths, rng) {
+    const isLong = targetPrice > stopPrice;
+    let wins = 0, losses = 0, expired = 0;
+    const drift = (muDaily - 0.5 * sigmaDaily * sigmaDaily);
+    for (let p = 0; p < numPaths; p++) {
+      let price = S0;
+      let outcome = 'expired';
+      for (let d = 0; d < horizonDays; d++) {
+        const z = randn(rng);
+        price = price * Math.exp(drift + sigmaDaily * z);
+        if (isLong) {
+          if (price >= targetPrice) { outcome = 'win'; break; }
+          if (price <= stopPrice) { outcome = 'loss'; break; }
+        } else {
+          if (price <= targetPrice) { outcome = 'win'; break; }
+          if (price >= stopPrice) { outcome = 'loss'; break; }
+        }
+      }
+      if (outcome === 'win') wins++;
+      else if (outcome === 'loss') losses++;
+      else expired++;
+    }
+    const decided = wins + losses;
+    // Treat "expired" as neither win nor loss for the win-rate estimate,
+    // but report its share so the UI can flag low-conviction setups.
+    const pHat = decided > 0 ? wins / decided : 0.5;
+    const se = decided > 0 ? Math.sqrt((pHat * (1 - pHat)) / decided) : 0;
+    return {
+      probability: pHat,
+      stderr: se,
+      ci95: [clamp(pHat - 1.96 * se, 0, 1), clamp(pHat + 1.96 * se, 0, 1)],
+      wins, losses, expired, numPaths
+    };
+  }
+
+  // Seedable PRNG (mulberry32) + Box-Muller normal sampler, so Monte
+  // Carlo runs are reproducible for a given seed if ever needed.
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function randn(rng) {
+    let u = 0, v = 0;
+    while (u === 0) u = rng();
+    while (v === 0) v = rng();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+
+  // 3) Walk-forward empirical backtest on the *actual* historical bars.
+  //    At each evaluation point, compute trend + support/resistance using
+  //    only data available up to that point, derive a hypothetical
+  //    long/short setup exactly like the live scenario generator, then
+  //    look forward (out-of-sample, using real subsequent bars) to see
+  //    which barrier was actually hit first. This is the "true output,
+  //    based on charts" empirical probability.
+  function walkForwardBacktest(data, { atrPeriod = 14, rrRatio = 2.0, maxHoldingDays = 20, srWindow = 5, minLookback = 60, step = 1 } = {}) {
+    const closes = data.map(d => d.close);
+    const highs = data.map(d => d.high);
+    const lows = data.map(d => d.low);
+    const n = closes.length;
+    const results = { long: [], short: [] };
+    if (n < minLookback + maxHoldingDays + 5) {
+      return { long: emptyBacktestStats(), short: emptyBacktestStats(), tradesEvaluated: 0, insufficientData: true };
+    }
+
+    const atrFull = atr(highs, lows, closes, atrPeriod);
+
+    for (let i = minLookback; i < n - maxHoldingDays; i += step) {
+      const histCloses = closes.slice(0, i + 1);
+      const histHighs = highs.slice(0, i + 1);
+      const histLows = lows.slice(0, i + 1);
+      const ma20 = rollingMean(histCloses, 20);
+      const ma50 = rollingMean(histCloses, 50);
+      const ma200Period = Math.max(1, Math.min(200, histCloses.length - 1));
+      const ma200 = rollingMean(histCloses, ma200Period);
+      const { trend } = identifyTrend(histCloses, ma20, ma50, ma200);
+      const sr = supportResistance(histHighs, histLows, srWindow);
+      const a = atrFull[i] || (closes[i] * 0.02);
+      const price = closes[i];
+
+      const support = sr.support_levels;
+      const resistance = sr.resistance_levels;
+
+      // --- Long setup ---
+      const longStop = support.length ? support[support.length - 1] : price - a;
+      const longTarget = resistance.length ? resistance[0] : price + a * rrRatio;
+      if (longTarget > price && longStop < price) {
+        const outcome = simulateForward(highs, lows, i, longStop, longTarget, true, maxHoldingDays);
+        results.long.push({ trend, entry: price, stop: longStop, target: longTarget, outcome, riskPerUnit: price - longStop, rewardPerUnit: longTarget - price });
+      }
+
+      // --- Short setup ---
+      const shortStop = resistance.length ? resistance[0] : price + a;
+      const shortTarget = support.length ? support[support.length - 1] : price - a * rrRatio;
+      if (shortTarget < price && shortStop > price) {
+        const outcome = simulateForward(highs, lows, i, shortStop, shortTarget, false, maxHoldingDays);
+        results.short.push({ trend, entry: price, stop: shortStop, target: shortTarget, outcome, riskPerUnit: shortStop - price, rewardPerUnit: price - shortTarget });
+      }
+    }
+
+    return {
+      long: summarizeBacktest(results.long),
+      short: summarizeBacktest(results.short),
+      tradesEvaluated: results.long.length + results.short.length,
+      insufficientData: false
+    };
+  }
+
+  function simulateForward(highs, lows, startIdx, stop, target, isLong, maxHoldingDays) {
+    for (let k = startIdx + 1; k <= Math.min(startIdx + maxHoldingDays, highs.length - 1); k++) {
+      if (isLong) {
+        // Conservative: if both levels are crossed intrabar, count the
+        // stop first (worst-case ordering — avoids overstating edge).
+        if (lows[k] <= stop) return 'loss';
+        if (highs[k] >= target) return 'win';
+      } else {
+        if (highs[k] >= stop) return 'loss';
+        if (lows[k] <= target) return 'win';
+      }
+    }
+    return 'expired';
+  }
+
+  function summarizeBacktest(trades) {
+    const decided = trades.filter(t => t.outcome !== 'expired');
+    const wins = decided.filter(t => t.outcome === 'win');
+    const losses = decided.filter(t => t.outcome === 'loss');
+    const winRate = decided.length ? wins.length / decided.length : null;
+    const avgWinR = wins.length ? mean(wins.map(t => t.rewardPerUnit / (t.riskPerUnit || 1e-9))) : 0;
+    const avgLossR = losses.length ? mean(losses.map(t => 1)) : 0; // by construction a loss = -1R
+    const expectancyR = winRate === null ? null : (winRate * avgWinR) - ((1 - winRate) * avgLossR);
+    const grossWin = wins.reduce((s, t) => s + (t.rewardPerUnit / (t.riskPerUnit || 1e-9)), 0);
+    const grossLoss = losses.length; // each loss ~1R by construction
+    const profitFactor = grossLoss > 0 ? grossWin / grossLoss : (grossWin > 0 ? Infinity : null);
+    const se = decided.length ? Math.sqrt((winRate * (1 - winRate)) / decided.length) : null;
+    return {
+      sampleSize: trades.length,
+      decided: decided.length,
+      expired: trades.length - decided.length,
+      wins: wins.length,
+      losses: losses.length,
+      winRate,
+      winRateSE: se,
+      winRateCI95: se !== null ? [clamp(winRate - 1.96 * se, 0, 1), clamp(winRate + 1.96 * se, 0, 1)] : null,
+      avgWinR,
+      expectancyR,
+      profitFactor
+    };
+  }
+
+  function emptyBacktestStats() {
+    return { sampleSize: 0, decided: 0, expired: 0, wins: 0, losses: 0, winRate: null, winRateSE: null, winRateCI95: null, avgWinR: 0, expectancyR: null, profitFactor: null };
+  }
+
+  // 4) Bayesian-style precision-weighted blend of:
+  //      - trend heuristic prior (original model, low precision / high bias)
+  //      - analytic GBM barrier probability (model-based, medium precision)
+  //      - Monte Carlo estimate (model-based, reports its own SE)
+  //      - empirical walk-forward backtest (data-driven, reports its own SE)
+  //    Sources with a numeric standard error are weighted by 1/SE^2
+  //    (inverse-variance weighting); the prior gets a fixed, modest
+  //    weight so it can't be swamped when the others are near-certain
+  //    but also isn't ignored when data is thin.
+  function blendProbabilities(sources) {
+    // sources: [{ p, se, weight }]
+    let wSum = 0, pwSum = 0;
+    for (const s of sources) {
+      if (s.p === null || s.p === undefined || isNaN(s.p)) continue;
+      let w = s.weight;
+      if (s.se && s.se > 0) w = w / (s.se * s.se + 1e-6);
+      wSum += w;
+      pwSum += w * s.p;
+    }
+    return wSum > 0 ? clamp(pwSum / wSum, 0.01, 0.99) : 0.5;
+  }
+
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  // Kelly criterion optimal risk fraction: f* = p - (1-p)/R, R = reward:risk odds
+  function kellyFraction(winProb, rrRatio) {
+    if (rrRatio <= 0) return 0;
+    const f = winProb - (1 - winProb) / rrRatio;
+    return clamp(f, 0, 1); // never suggest negative sizing / never over-lever past 100%
+  }
+
+  return {
+    mean, stdev, logReturns, rollingMean, rollingStd, ewm,
+    sma, rsi, macd, bollinger, atr, supportResistance, linearRegression, identifyTrend,
+    analyticBarrierProbability, monteCarloBarrierProbability, walkForwardBacktest,
+    blendProbabilities, kellyFraction, mulberry32, randn, clamp
+  };
+})();
+
+
+
+</script>
+<script>
+(() => {
+  'use strict';
+
+  // ------------------------------------------------------------------
+  // State
+  // ------------------------------------------------------------------
+  const state = {
+    data: null,        // [{date, open, high, low, close, volume}]
+    symbol: 'DATA',
+    result: null,
+    charts: { price: null, rsi: null, macd: null }
+  };
+
+  const $ = (id) => document.getElementById(id);
+
+  // ------------------------------------------------------------------
+  // Tabs (input source)
+  // ------------------------------------------------------------------
+  document.querySelectorAll('.pillbar[data-group="input"] button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.pillbar[data-group="input"] button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.input-pane').forEach(p => p.classList.remove('active'));
+      $(btn.dataset.target).classList.add('active');
+    });
+  });
+
+  // ------------------------------------------------------------------
+  // CSV upload / drag-drop
+  // ------------------------------------------------------------------
+  const dropzone = $('dropzone');
+  const fileInput = $('csvFile');
+  let uploadedText = null, uploadedName = null;
+
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('drag'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('drag');
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length) handleFile(e.target.files[0]);
+  });
+  function handleFile(file) {
+    uploadedName = file.name;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      uploadedText = ev.target.result;
+      $('dzLabel').textContent = 'Drop a different CSV, or click to browse';
+      $('dzFname').textContent = file.name;
+      $('dzFname').style.display = 'block';
+    };
+    reader.readAsText(file);
+  }
+
+  // ------------------------------------------------------------------
+  // CSV parsing — tolerant of column order / case, requires
+  // Date/Open/High/Low/Close, Volume optional.
+  // ------------------------------------------------------------------
+  function parseCSV(text) {
+    const lines = text.split(/\r\n|\n|\r/).map(l => l.trim()).filter(l => l.length);
+    if (lines.length < 2) throw new Error('CSV needs a header row plus at least one data row.');
+    const header = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
+    const col = (names) => {
+      for (const n of names) { const i = header.indexOf(n); if (i !== -1) return i; }
+      return -1;
+    };
+    const iDate = col(['date', 'time', 'datetime']);
+    const iOpen = col(['open']);
+    const iHigh = col(['high']);
+    const iLow = col(['low']);
+    const iClose = col(['close', 'adj close', 'close/last']);
+    const iVol = col(['volume', 'vol']);
+    if (iOpen === -1 || iHigh === -1 || iLow === -1 || iClose === -1) {
+      throw new Error('CSV must have Open, High, Low, Close columns (Date and Volume optional).');
+    }
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+      const parts = splitCsvLine(lines[i]);
+      if (parts.length < 4) continue;
+      const open = parseFloat(parts[iOpen]);
+      const high = parseFloat(parts[iHigh]);
+      const low = parseFloat(parts[iLow]);
+      const close = parseFloat(parts[iClose]);
+      if ([open, high, low, close].some(v => isNaN(v))) continue;
+      rows.push({
+        date: iDate !== -1 ? parts[iDate].replace(/"/g, '') : `#${i}`,
+        open, high, low, close,
+        volume: iVol !== -1 ? (parseFloat(parts[iVol]) || 0) : 0
+      });
+    }
+    if (rows.length < 30) throw new Error(`Only found ${rows.length} valid rows — need at least 30 bars for meaningful indicators (200+ recommended for MA200 / backtest).`);
+    return rows;
+  }
+  function splitCsvLine(line) {
+    // handles simple quoted fields
+    const out = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') inQ = !inQ;
+      else if (c === ',' && !inQ) { out.push(cur); cur = ''; }
+      else cur += c;
+    }
+    out.push(cur);
+    return out;
+  }
+
+  // ------------------------------------------------------------------
+  // Synthetic sample data generator (mirrors generate_sample_data.py,
+  // extended with a 4th "volatile chop" preset and a seeded RNG so a
+  // given seed always reproduces the same series)
+  // ------------------------------------------------------------------
+  function generateSample({ trend, volatility, days, startPrice, seed }) {
+    const rng = Engine.mulberry32(seed >>> 0);
+    const driftMap = { uptrend: 0.0012, downtrend: -0.0012, sideways: 0, volatile: 0.0002 };
+    const drift = driftMap[trend] ?? 0;
+    const closes = [startPrice];
+    for (let i = 1; i < days; i++) {
+      const dailyReturn = drift + volatility * Engine.randn(rng);
+      closes.push(Math.max(0.01, closes[closes.length - 1] * (1 + dailyReturn)));
+    }
+    const rows = [];
+    const today = new Date();
+    for (let i = 0; i < days; i++) {
+      const close = closes[i];
+      const open = i > 0 ? closes[i - 1] : close * (1 + (rng() * 0.02 - 0.01));
+      const high = Math.max(open, close) * (1 + Math.abs(Engine.randn(rng)) * volatility);
+      const low = Math.min(open, close) * (1 - Math.abs(Engine.randn(rng)) * volatility);
+      const volume = Math.round(1000000 + rng() * 4000000);
+      const d = new Date(today.getTime() - (days - 1 - i) * 86400000);
+      rows.push({ date: d.toISOString().slice(0, 10), open, high, low: Math.max(low, 0.01), close, volume });
+    }
+    return rows;
+  }
+
+  $('genBtn').addEventListener('click', () => {
+    const trend = $('sampleTrend').value;
+    const volatility = parseFloat($('sampleVol').value) / 100;
+    const days = parseInt($('sampleDays').value, 10);
+    const startPrice = parseFloat($('sampleStart').value) || 100;
+    const seed = Date.now() % 2147483647;
+    const rows = generateSample({ trend, volatility, days, startPrice, seed });
+    state.data = rows;
+    state.symbol = `SAMPLE:${trend.toUpperCase()}`;
+    setStatus(`Generated ${days} synthetic bars (${trend}, seed ${seed}). Ready to run.`);
+  });
+
+  // ------------------------------------------------------------------
+  // Status line
+  // ------------------------------------------------------------------
+  function setStatus(msg, isErr) {
+    const el = $('statusMsg');
+    el.textContent = msg;
+    el.classList.toggle('err', !!isErr);
+  }
+
+  // ------------------------------------------------------------------
+  // Theme toggle
+  // ------------------------------------------------------------------
+  $('themeToggle').addEventListener('click', () => {
+    const html = document.documentElement;
+    const next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    if (next === 'light') html.setAttribute('data-theme', 'light'); else html.removeAttribute('data-theme');
+    $('themeToggle').textContent = next === 'light' ? 'dark mode' : 'light mode';
+    rerenderChartsForTheme();
+  });
+
+  // ------------------------------------------------------------------
+  // Run analysis
+  // ------------------------------------------------------------------
+  $('runBtn').addEventListener('click', runAnalysis);
+
+  function runAnalysis() {
+    try {
+      // Resolve data source from active tab
+      const activeTab = document.querySelector('.pillbar[data-group="input"] button.active').dataset.target;
+      if (activeTab === 'paneUpload') {
+        if (!uploadedText) throw new Error('Choose a CSV file first.');
+        state.data = parseCSV(uploadedText);
+        state.symbol = uploadedName.replace(/\.csv$/i, '').toUpperCase();
+      } else if (activeTab === 'panePaste') {
+        const txt = $('pasteArea').value.trim();
+        if (!txt) throw new Error('Paste some CSV text first.');
+        state.data = parseCSV(txt);
+        state.symbol = 'PASTED';
+      } else if (activeTab === 'paneSample') {
+        if (!state.data) throw new Error('Click "Generate sample data" first.');
+      }
+
+      if (!state.data || state.data.length < 30) throw new Error('Not enough data rows.');
+
+      $('runBtn').disabled = true;
+      $('runBtn').innerHTML = '<span class="spinner"></span>Crunching numbers…';
+      setStatus('Running indicators, probability models and backtest…');
+
+      // Defer to next tick so the spinner actually paints before the
+      // (synchronous, potentially heavy) Monte Carlo / backtest run.
+      setTimeout(() => {
+        try {
+          const cfg = readConfig();
+          const result = computeFullAnalysis(state.data, cfg);
+          state.result = result;
+          renderAll(result, cfg);
+          $('emptyState').style.display = 'none';
+          $('results').hidden = false;
+          setStatus(`Done — ${state.data.length} bars analyzed, ${result.backtest.tradesEvaluated} walk-forward trades evaluated.`);
+        } catch (err) {
+          console.error(err);
+          setStatus('Error: ' + err.message, true);
+        } finally {
+          $('runBtn').disabled = false;
+          $('runBtn').textContent = 'Run analysis';
+        }
+      }, 30);
+    } catch (err) {
+      setStatus('Error: ' + err.message, true);
+    }
+  }
+
+  function readConfig() {
+    return {
+      rrRatio: parseFloat($('cfgRR').value) || 2.0,
+      atrPeriod: parseInt($('cfgAtrPeriod').value, 10) || 14,
+      srWindow: parseInt($('cfgSrWindow').value, 10) || 5,
+      mcPaths: Math.min(20000, Math.max(500, parseInt($('cfgMcPaths').value, 10) || 8000)),
+      horizonDays: Math.min(90, Math.max(3, parseInt($('cfgHorizon').value, 10) || 20)),
+      accountSize: parseFloat($('cfgAccount').value) || 10000,
+      riskPct: Math.min(10, Math.max(0.1, parseFloat($('cfgRiskPct').value) || 1)),
+      volLookback: 90
+    };
+  }
+
+  // ------------------------------------------------------------------
+  // Core analysis pipeline
+  // ------------------------------------------------------------------
+  function computeFullAnalysis(data, cfg) {
+    const closes = data.map(d => d.close);
+    const highs = data.map(d => d.high);
+    const lows = data.map(d => d.low);
+    const n = closes.length;
+
+    const ma20 = Engine.sma(closes, 20);
+    const ma50 = Engine.sma(closes, 50);
+    const ma200 = Engine.sma(closes, Math.min(200, n > 1 ? n - 1 : 1));
+    const rsiArr = Engine.rsi(closes, 14);
+    const macdRes = Engine.macd(closes);
+    const bb = Engine.bollinger(closes);
+    const atrArr = Engine.atr(highs, lows, closes, cfg.atrPeriod);
+    const sr = Engine.supportResistance(highs, lows, cfg.srWindow);
+    const trendInfo = Engine.identifyTrend(closes, ma20, ma50, ma200);
+    const regWindow = Math.min(60, n);
+    const reg = Engine.linearRegression(closes.slice(-regWindow));
+
+    const price = closes[n - 1];
+    const atrNow = isFinite(atrArr[n - 1]) && atrArr[n - 1] > 0 ? atrArr[n - 1] : price * 0.02;
+
+    const lookback = Math.min(cfg.volLookback, n - 1);
+    const rets = Engine.logReturns(closes.slice(-(lookback + 1)));
+    const muDaily = Engine.mean(rets);
+    const sigmaDaily = Math.max(Engine.stdev(rets), 1e-5);
+    const annualizedVolPct = sigmaDaily * Math.sqrt(252) * 100;
+
+    const support = sr.support_levels;
+    const resistance = sr.resistance_levels;
+
+    // --- Long setup ---
+    let longStop = support.length ? support[support.length - 1] : price - atrNow;
+    let longTarget = resistance.length ? resistance[0] : price + atrNow * cfg.rrRatio;
+    if (longStop >= price) longStop = price - atrNow;
+    if (longTarget <= price) longTarget = price + atrNow * cfg.rrRatio;
+
+    // --- Short setup ---
+    let shortStop = resistance.length ? resistance[0] : price + atrNow;
+    let shortTarget = support.length ? support[support.length - 1] : price - atrNow * cfg.rrRatio;
+    if (shortStop <= price) shortStop = price + atrNow;
+    if (shortTarget >= price) shortTarget = price - atrNow * cfg.rrRatio;
+
+    const backtest = Engine.walkForwardBacktest(data, {
+      atrPeriod: cfg.atrPeriod, rrRatio: cfg.rrRatio, maxHoldingDays: cfg.horizonDays,
+      srWindow: cfg.srWindow, minLookback: Math.min(60, Math.max(30, Math.floor(n * 0.3))),
+      step: n > 400 ? 3 : n > 200 ? 2 : 1
+    });
+
+    const rngLong = Engine.mulberry32(0xC0FFEE ^ Math.floor(price * 997));
+    const rngShort = Engine.mulberry32(0xBADA55 ^ Math.floor(price * 991));
+
+    const longScenario = buildScenario({
+      type: 'LONG', price, stop: longStop, target: longTarget, trendInfo,
+      muDaily, sigmaDaily, horizonDays: cfg.horizonDays, mcPaths: cfg.mcPaths, rng: rngLong,
+      backtestStats: backtest.long, cfg
+    });
+    const shortScenario = buildScenario({
+      type: 'SHORT', price, stop: shortStop, target: shortTarget, trendInfo,
+      muDaily, sigmaDaily, horizonDays: cfg.horizonDays, mcPaths: cfg.mcPaths, rng: rngShort,
+      backtestStats: backtest.short, cfg
+    });
+
+    const worseSide = longScenario.expectedValue <= shortScenario.expectedValue ? 'LONG' : 'SHORT';
+    const betterSide = worseSide === 'LONG' ? shortScenario : longScenario;
+    const bothNegative = longScenario.expectedValue <= 0 && shortScenario.expectedValue <= 0;
+    const noTrade = {
+      type: 'NO_TRADE',
+      probability: 1.0,
+      expectedValue: 0,
+      reason: bothNegative
+        ? 'Neither direction shows a positive expected value at the current price — the edge (if any) does not clear transaction costs and slippage.'
+        : `${worseSide === 'LONG' ? 'Long' : 'Short'} conflicts with the ${trendInfo.trend.toLowerCase()} and carries the weaker blended probability of the two directions.`
+    };
+
+    const scenarios = [longScenario, shortScenario, noTrade];
+    scenarios.sort((a, b) => b.expectedValue - a.expectedValue);
+    scenarios.forEach((s, i) => { s.rank = i + 1; });
+
+    return {
+      symbol: state.symbol,
+      n, price,
+      dates: data.map(d => d.date),
+      closes, highs, lows,
+      ma20, ma50, ma200, rsiArr, macdRes, bb, atrArr,
+      trendInfo, reg, sr,
+      muDaily, sigmaDaily, annualizedVolPct,
+      longScenario, shortScenario, noTrade, scenarios,
+      backtest,
+      dataQualityWarnings: buildWarnings(n, backtest)
+    };
+  }
+
+  function buildWarnings(n, backtest) {
+    const warns = [];
+    if (n < 100) warns.push(`Only ${n} bars of data — MA200 and the empirical backtest are on thin ice below ~100–200 bars. Treat probabilities as indicative, not precise.`);
+    if (backtest.insufficientData) warns.push('Not enough history for a walk-forward backtest (need roughly 90+ bars beyond the configured horizon). Backtest-derived probability falls back to the model-based estimate only.');
+    else if (backtest.tradesEvaluated < 15) warns.push(`Backtest sample is small (${backtest.tradesEvaluated} setups evaluated) — its confidence interval will be wide.`);
+    return warns;
+  }
+
+  // Legacy trend heuristic (kept as the low-weight "prior" in the blend —
+  // this is the original model's win-probability rule, unchanged).
+  function heuristicProbability(type, trend) {
+    let p = 0.5;
+    if (type === 'LONG') {
+      if (trend.includes('UPTREND')) p = trend.includes('STRONG') ? 0.65 : 0.58;
+      else if (trend.includes('DOWNTREND')) p = trend.includes('STRONG') ? 0.35 : 0.42;
+    } else {
+      if (trend.includes('DOWNTREND')) p = trend.includes('STRONG') ? 0.65 : 0.58;
+      else if (trend.includes('UPTREND')) p = trend.includes('STRONG') ? 0.35 : 0.42;
+    }
+    return p;
+  }
+
+  function buildScenario({ type, price, stop, target, trendInfo, muDaily, sigmaDaily, horizonDays, mcPaths, rng, backtestStats, cfg }) {
+    const isLong = type === 'LONG';
+    const risk = Math.abs(price - stop);
+    const reward = Math.abs(target - price);
+    const rr = risk > 0 ? reward / risk : 0;
+
+    const prior = heuristicProbability(type, trendInfo.trend);
+    const analytic = Engine.analyticBarrierProbability(price, stop, target, muDaily, sigmaDaily);
+    const mc = Engine.monteCarloBarrierProbability(price, stop, target, muDaily, sigmaDaily, horizonDays, mcPaths, rng);
+    const backtestP = backtestStats && backtestStats.winRate !== null ? backtestStats.winRate : null;
+    const backtestSE = backtestStats ? backtestStats.winRateSE : null;
+
+    const blended = Engine.blendProbabilities([
+      { p: prior, se: null, weight: 3 },
+      { p: analytic, se: null, weight: 6 },
+      { p: mc.probability, se: mc.stderr, weight: 10 },
+      { p: backtestP, se: backtestSE, weight: 18 }
+    ]);
+
+    const expectedValue = blended * reward - (1 - blended) * risk;
+    const kelly = Engine.kellyFraction(blended, rr);
+    const halfKelly = kelly / 2;
+
+    const riskDollars = cfg.accountSize * (cfg.riskPct / 100);
+    const suggestedUnits = risk > 0 ? riskDollars / risk : 0;
+    const suggestedNotional = suggestedUnits * price;
+
+    const kellyNotional = cfg.accountSize * Math.min(halfKelly, 0.25);
+    const kellyUnits = price > 0 ? kellyNotional / price : 0;
+
+    return {
+      type, entry: price, stop, target, risk, reward, rr,
+      probSources: {
+        prior, analytic,
+        monteCarlo: { p: mc.probability, se: mc.stderr, ci95: mc.ci95, expired: mc.expired, numPaths: mc.numPaths },
+        backtest: backtestStats
+      },
+      probability: blended,
+      expectedValue,
+      kelly, halfKelly,
+      sizing: { riskDollars, suggestedUnits, suggestedNotional, kellyNotional, kellyUnits }
+    };
+  }
+
+  // ------------------------------------------------------------------
+  // Rendering
+  // ------------------------------------------------------------------
+  function renderAll(r, cfg) {
+    renderWarnings(r);
+    renderTicker(r);
+    renderCharts(r);
+    renderIndicators(r);
+    renderProbabilityPanel(r);
+    renderScenarios(r);
+    renderBacktest(r);
+    renderSizing(r, cfg);
+  }
+
+  function fmt(v, d = 2) { return (isFinite(v) ? v : 0).toFixed(d); }
+  function fmtMoney(v) { return (v < 0 ? '-$' : '$') + Math.abs(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function fmtPct(v, d = 1) { return (v * 100).toFixed(d) + '%'; }
+
+  function renderWarnings(r) {
+    const el = $('warnBox');
+    if (!r.dataQualityWarnings.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+    el.style.display = 'block';
+    el.innerHTML = r.dataQualityWarnings.map(w => `<div>⚠ ${escapeHtml(w)}</div>`).join('');
+  }
+
+  function renderTicker(r) {
+    const t = r.trendInfo;
+    const cls = t.strength > 0.1 ? 'up' : t.strength < -0.1 ? 'down' : 'flat';
+    $('tickerSymbol').textContent = r.symbol;
+    $('tickerPrice').textContent = '$' + fmt(r.price);
+    $('tickerBadge').className = 'badge ' + cls;
+    $('tickerBadge').textContent = `${t.trend} · strength ${fmt(t.strength, 2)}`;
+    $('mBars').textContent = r.n;
+    $('mVol').textContent = fmt(r.annualizedVolPct, 1) + '%';
+    $('mRR').textContent = 'μ ' + (r.muDaily >= 0 ? '+' : '') + (r.muDaily * 100).toFixed(3) + '%/d';
+    $('mR2').textContent = fmt(r.reg.r2, 2);
+  }
+
+  function themeColors() {
+    const light = document.documentElement.getAttribute('data-theme') === 'light';
+    return {
+      grid: light ? '#e3e6eb' : '#1b2534',
+      text: light ? '#4c5566' : '#9aa7bb',
+      jade: '#33d6a6', coral: '#ff6b5e', amber: '#e8b33d', blue: '#5aa9ff', text2: light ? '#141922' : '#e7ecf3'
+    };
+  }
+
+  function destroyCharts() {
+    Object.keys(state.charts).forEach(k => { if (state.charts[k]) { state.charts[k].destroy(); state.charts[k] = null; } });
+  }
+
+  function renderCharts(r) {
+    destroyCharts();
+    const c = themeColors();
+    const labels = r.dates;
+
+    // ---- Price chart: OHLC wick bars (floating bar high-low) + close line + MAs + Bollinger fill ----
+    const wickData = r.closes.map((_, i) => [r.lows[i], r.highs[i]]);
+    const scenarioOverlay = buildOverlayDatasets(r, c);
+
+    state.charts.price = new Chart($('priceChart').getContext('2d'), {
+      data: {
+        labels,
+        datasets: [
+          {
+            type: 'bar', label: 'Range', data: wickData,
+            backgroundColor: r.closes.map((cl, i) => (i === 0 || cl >= r.closes[i - 1]) ? 'rgba(51,214,166,0.35)' : 'rgba(255,107,94,0.35)'),
+            barPercentage: 0.28, categoryPercentage: 1.0, order: 5
+          },
+          { type: 'line', label: 'Close', data: r.closes, borderColor: c.text2, borderWidth: 1.6, pointRadius: 0, order: 1, tension: 0.05 },
+          { type: 'line', label: 'MA20', data: r.ma20, borderColor: c.amber, borderWidth: 1.2, pointRadius: 0, order: 2, spanGaps: true },
+          { type: 'line', label: 'MA50', data: r.ma50, borderColor: c.blue, borderWidth: 1.2, pointRadius: 0, order: 3, spanGaps: true },
+          { type: 'line', label: 'MA200', data: r.ma200, borderColor: c.coral, borderWidth: 1.2, pointRadius: 0, order: 4, spanGaps: true },
+          { type: 'line', label: 'BB Upper', data: r.bb.upper, borderColor: 'rgba(154,167,187,0.35)', borderWidth: 1, pointRadius: 0, borderDash: [3, 3], fill: false, order: 6, spanGaps: true },
+          { type: 'line', label: 'BB Lower', data: r.bb.lower, borderColor: 'rgba(154,167,187,0.35)', borderWidth: 1, pointRadius: 0, borderDash: [3, 3], fill: '-1', backgroundColor: 'rgba(154,167,187,0.06)', order: 7, spanGaps: true },
+          ...scenarioOverlay
+        ]
+      },
+      options: baseChartOptions(c, { y: { title: 'Price' } })
+    });
+
+    // ---- RSI ----
+    state.charts.rsi = new Chart($('rsiChart').getContext('2d'), {
+      data: {
+        labels,
+        datasets: [
+          { type: 'line', label: 'RSI(14)', data: r.rsiArr, borderColor: c.blue, borderWidth: 1.4, pointRadius: 0, spanGaps: true },
+          { type: 'line', label: 'Overbought 70', data: labels.map(() => 70), borderColor: 'rgba(255,107,94,0.4)', borderWidth: 1, borderDash: [4, 4], pointRadius: 0 },
+          { type: 'line', label: 'Oversold 30', data: labels.map(() => 30), borderColor: 'rgba(51,214,166,0.4)', borderWidth: 1, borderDash: [4, 4], pointRadius: 0 }
+        ]
+      },
+      options: baseChartOptions(c, { y: { min: 0, max: 100, title: 'RSI' } })
+    });
+
+    // ---- MACD ----
+    state.charts.macd = new Chart($('macdChart').getContext('2d'), {
+      data: {
+        labels,
+        datasets: [
+          { type: 'bar', label: 'Histogram', data: r.macdRes.hist, backgroundColor: r.macdRes.hist.map(v => v >= 0 ? 'rgba(51,214,166,0.55)' : 'rgba(255,107,94,0.55)'), barPercentage: 0.6 },
+          { type: 'line', label: 'MACD', data: r.macdRes.macdLine, borderColor: c.blue, borderWidth: 1.4, pointRadius: 0, spanGaps: true },
+          { type: 'line', label: 'Signal', data: r.macdRes.signalLine, borderColor: c.amber, borderWidth: 1.4, pointRadius: 0, spanGaps: true }
+        ]
+      },
+      options: baseChartOptions(c, { y: { title: 'MACD' } })
+    });
+  }
+
+  function buildOverlayDatasets(r, c) {
+    const mode = $('overlaySelect') ? $('overlaySelect').value : 'none';
+    if (mode === 'none') return [];
+    const s = mode === 'long' ? r.longScenario : r.shortScenario;
+    const n = r.dates.length;
+    const line = (val, color) => ({
+      type: 'line', label: '', data: new Array(n).fill(val), borderColor: color, borderWidth: 1.2,
+      borderDash: [6, 3], pointRadius: 0, order: 8
+    });
+    return [
+      line(s.entry, c.text), line(s.stop, c.coral), line(s.target, c.jade)
+    ];
+  }
+
+  function baseChartOptions(c, axisOverrides) {
+    const yOverride = Object.assign({}, axisOverrides.y || {});
+    const yTitleText = yOverride.title;
+    delete yOverride.title;
+    return {
+      responsive: true, maintainAspectRatio: false,
+      animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: c.text, boxWidth: 10, font: { size: 10.5 }, filter: (item) => item.text !== '' } },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      scales: {
+        x: { ticks: { color: c.text, maxTicksLimit: 8, font: { size: 10 } }, grid: { color: c.grid, display: false } },
+        y: Object.assign(
+          { ticks: { color: c.text, font: { size: 10 } }, grid: { color: c.grid } },
+          yTitleText ? { title: { display: true, text: yTitleText, color: c.text, font: { size: 10.5 } } } : {},
+          yOverride
+        )
+      }
+    };
+  }
+
+  function rerenderChartsForTheme() { if (state.result) renderCharts(state.result); }
+
+  $('overlaySelect').addEventListener('change', () => { if (state.result) renderCharts(state.result); });
+
+  function renderIndicators(r) {
+    const n = r.n - 1;
+    const rows = [
+      ['RSI (14)', fmt(r.rsiArr[n], 1), r.rsiArr[n] > 70 ? 'coral' : r.rsiArr[n] < 30 ? 'jade' : ''],
+      ['MACD', fmt(r.macdRes.macdLine[n], 3), ''],
+      ['MACD Signal', fmt(r.macdRes.signalLine[n], 3), ''],
+      ['ATR (14)', fmt(r.atrArr[n], 3), ''],
+      ['MA 20', fmt(r.ma20[n], 2), ''],
+      ['MA 50', fmt(r.ma50[n], 2), ''],
+      ['MA 200', isNaN(r.ma200[n]) ? 'n/a' : fmt(r.ma200[n], 2), ''],
+      ['Bollinger %B', fmt(bollPercentB(r), 2), ''],
+      ['Ann. volatility', fmt(r.annualizedVolPct, 1) + '%', ''],
+      ['Trend R²  (60d fit)', fmt(r.reg.r2, 2), ''],
+      ['Support', r.sr.support_levels.length ? '$' + fmt(r.sr.support_levels[r.sr.support_levels.length - 1]) : 'n/a', 'jade'],
+      ['Resistance', r.sr.resistance_levels.length ? '$' + fmt(r.sr.resistance_levels[0]) : 'n/a', 'coral']
+    ];
+    $('indicatorGrid').innerHTML = rows.map(([l, v, cls]) =>
+      `<div class="ind-box"><div class="l">${escapeHtml(l)}</div><div class="v ${cls}">${escapeHtml(v)}</div></div>`
+    ).join('');
+  }
+
+  function bollPercentB(r) {
+    const n = r.n - 1;
+    const u = r.bb.upper[n], l = r.bb.lower[n], p = r.closes[n];
+    if (!isFinite(u) || !isFinite(l) || u === l) return 0;
+    return (p - l) / (u - l);
+  }
+
+  function renderProbabilityPanel(r) {
+    $('probPanel').innerHTML = ['LONG', 'SHORT'].map(type => {
+      const s = type === 'LONG' ? r.longScenario : r.shortScenario;
+      const ps = s.probSources;
+      const rows = [
+        { name: 'Trend prior', p: ps.prior, se: null },
+        { name: 'Analytic barrier (GBM)', p: ps.analytic, se: null },
+        { name: `Monte Carlo (${ps.monteCarlo.numPaths.toLocaleString()} paths)`, p: ps.monteCarlo.p, se: ps.monteCarlo.se, ci: ps.monteCarlo.ci95 },
+        {
+          name: ps.backtest && ps.backtest.winRate !== null ? `Walk-forward backtest (n=${ps.backtest.decided})` : 'Walk-forward backtest',
+          p: ps.backtest ? ps.backtest.winRate : null, se: ps.backtest ? ps.backtest.winRateSE : null, ci: ps.backtest ? ps.backtest.winRateCI95 : null
+        }
+      ];
+      const rowsHtml = rows.map(row => {
+        if (row.p === null || row.p === undefined) {
+          return `<div class="prob-source"><div class="top"><span class="name">${escapeHtml(row.name)}</span><span class="val">n/a</span></div><div class="prob-track"></div></div>`;
+        }
+        const pct = row.p * 100;
+        const ciHtml = row.ci ? `<div class="prob-ci" style="left:${(row.ci[0] * 100).toFixed(1)}%; width:${((row.ci[1] - row.ci[0]) * 100).toFixed(1)}%;"></div>` : '';
+        return `<div class="prob-source">
+          <div class="top"><span class="name">${escapeHtml(row.name)}</span><span class="val">${pct.toFixed(1)}%</span></div>
+          <div class="prob-track"><div class="prob-fill" style="width:${pct.toFixed(1)}%"></div>${ciHtml}</div>
+        </div>`;
+      }).join('');
+      return `<div class="prob-col">
+        <h4><span class="dir-dot ${type.toLowerCase()}"></span>${type} — win probability sources</h4>
+        ${rowsHtml}
+        <div class="blended-readout">
+          <div><div class="lbl">Blended probability</div><div class="big">${(s.probability * 100).toFixed(1)}%</div></div>
+          <div style="text-align:right"><div class="lbl">Expected value / unit</div><div class="big ${s.expectedValue >= 0 ? 'ev-pos' : 'ev-neg'}">${s.expectedValue >= 0 ? '+' : ''}${fmt(s.expectedValue)}</div></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderScenarios(r) {
+    $('scenariosGrid').innerHTML = r.scenarios.map(s => {
+      const isBest = s.rank === 1;
+      if (s.type === 'NO_TRADE') {
+        return `<div class="scenario-card wait ${isBest ? 'best' : ''}">
+          <div class="sc-head"><span class="ttl">${isBest ? '✓ ' : ''}#${s.rank} No trade</span><span class="rank">EV $0.00</span></div>
+          <p class="sc-note">${escapeHtml(s.reason)}</p>
+        </div>`;
+      }
+      const dirClass = s.type.toLowerCase();
+      return `<div class="scenario-card ${dirClass} ${isBest ? 'best' : ''}">
+        <div class="sc-head"><span class="ttl">${isBest ? '✓ ' : ''}#${s.rank} ${s.type}</span><span class="rank">rank ${s.rank}</span></div>
+        <div class="sc-rows">
+          <div class="r"><div class="l">Entry</div><div class="v">$${fmt(s.entry)}</div></div>
+          <div class="r"><div class="l">Stop loss</div><div class="v">$${fmt(s.stop)}</div></div>
+          <div class="r"><div class="l">Target</div><div class="v">$${fmt(s.target)}</div></div>
+          <div class="r"><div class="l">Risk / unit</div><div class="v">$${fmt(s.risk)}</div></div>
+          <div class="r"><div class="l">Reward / unit</div><div class="v">$${fmt(s.reward)}</div></div>
+          <div class="r"><div class="l">R:R ratio</div><div class="v">${fmt(s.rr)}</div></div>
+        </div>
+        <div class="sc-divider"></div>
+        <div class="sc-rows">
+          <div class="r"><div class="l">Blended win probability</div><div class="v">${fmtPct(s.probability)}</div></div>
+          <div class="r"><div class="l">Expected value / unit</div><div class="v ${s.expectedValue >= 0 ? 'ev-pos' : 'ev-neg'}">${s.expectedValue >= 0 ? '+' : ''}$${fmt(s.expectedValue)}</div></div>
+          <div class="r"><div class="l">Kelly f*</div><div class="v">${fmtPct(s.kelly)}</div></div>
+          <div class="r"><div class="l">Half-Kelly (practical)</div><div class="v">${fmtPct(s.halfKelly)}</div></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderBacktest(r) {
+    const bt = r.backtest;
+    if (bt.insufficientData) {
+      $('backtestBody').innerHTML = `<p class="sc-note">Not enough historical bars for a walk-forward backtest with the current horizon. Upload a longer series (roughly 90+ bars beyond the simulation horizon) to unlock empirical win rates.</p>`;
+      return;
+    }
+    const row = (label, s) => `<tr>
+      <td class="lbl-cell">${label}</td>
+      <td>${s.sampleSize}</td>
+      <td>${s.decided}</td>
+      <td>${s.expired}</td>
+      <td>${s.winRate === null ? 'n/a' : fmtPct(s.winRate)}</td>
+      <td>${s.winRateCI95 ? `${fmtPct(s.winRateCI95[0])} – ${fmtPct(s.winRateCI95[1])}` : 'n/a'}</td>
+      <td>${s.expectancyR === null ? 'n/a' : fmt(s.expectancyR, 2) + 'R'}</td>
+      <td>${s.profitFactor === null ? 'n/a' : (s.profitFactor === Infinity ? '∞' : fmt(s.profitFactor, 2))}</td>
+    </tr>`;
+    $('backtestBody').innerHTML = `
+      <table class="bt-table">
+        <thead><tr><th>Setup</th><th>Evaluated</th><th>Decided</th><th>Expired</th><th>Win rate</th><th>95% CI</th><th>Expectancy</th><th>Profit factor</th></tr></thead>
+        <tbody>${row('Long', bt.long)}${row('Short', bt.short)}</tbody>
+      </table>
+      <p class="methodology">
+        Walk-forward method: at each historical bar (stepping across the series), the same trend + support/resistance
+        rule used for the live scenario is re-derived using only data available up to that bar, producing a
+        hypothetical entry/stop/target. The subsequent ${r.n > 0 ? '' : ''}bars (out-of-sample, up to the configured horizon) are then
+        checked to see which level was actually touched first. When a bar's high and low straddle both levels,
+        the stop is counted first (worst-case ordering, so this cannot overstate the edge). "Expired" trades hit
+        neither level within the horizon and are excluded from the win rate. This is the same math a walk-forward
+        backtest engine uses, run directly against your uploaded chart.
+      </p>`;
+  }
+
+  function renderSizing(r, cfg) {
+    const boxes = ['LONG', 'SHORT'].map(type => {
+      const s = type === 'LONG' ? r.longScenario : r.shortScenario;
+      const sz = s.sizing;
+      return `<div class="sizing-box">
+        <h5>${type} position size</h5>
+        <div class="sizing-row"><span>Account risk budget</span><span class="v">${fmtMoney(sz.riskDollars)} (${fmt(cfg.riskPct, 1)}% of ${fmtMoney(cfg.accountSize)})</span></div>
+        <div class="sizing-row"><span>Fixed-risk size (risk ÷ stop distance)</span><span class="v">${fmt(sz.suggestedUnits, 2)} units ≈ ${fmtMoney(sz.suggestedNotional)}</span></div>
+        <div class="sizing-row"><span>Kelly f*</span><span class="v">${fmtPct(s.kelly)}</span></div>
+        <div class="sizing-row"><span>Half-Kelly, capped at 25% of account</span><span class="v">${fmt(sz.kellyUnits, 2)} units ≈ ${fmtMoney(sz.kellyNotional)}</span></div>
+      </div>`;
+    }).join('');
+    $('sizingGrid').innerHTML = boxes;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // ------------------------------------------------------------------
+  // Exports
+  // ------------------------------------------------------------------
+  $('exportJsonBtn').addEventListener('click', () => {
+    if (!state.result) return;
+    const r = state.result;
+    const payload = {
+      generated_at: new Date().toISOString(),
+      symbol: r.symbol,
+      bars_analyzed: r.n,
+      current_price: r.price,
+      trend: r.trendInfo,
+      indicators: {
+        rsi: r.rsiArr[r.n - 1], macd: r.macdRes.macdLine[r.n - 1], macd_signal: r.macdRes.signalLine[r.n - 1],
+        atr: r.atrArr[r.n - 1], ma20: r.ma20[r.n - 1], ma50: r.ma50[r.n - 1], ma200: r.ma200[r.n - 1],
+        annualized_volatility_pct: r.annualizedVolPct, trend_r2_60d: r.reg.r2
+      },
+      support_resistance: r.sr,
+      scenarios: r.scenarios.map(s => ({
+        type: s.type, rank: s.rank,
+        entry: s.entry, stop: s.stop, target: s.target,
+        risk_per_unit: s.risk, reward_per_unit: s.reward, risk_reward: s.rr,
+        probability_sources: s.probSources, blended_probability: s.probability,
+        expected_value_per_unit: s.expectedValue, kelly_fraction: s.kelly, half_kelly: s.halfKelly,
+        sizing: s.sizing, reason: s.reason
+      })),
+      backtest: r.backtest,
+      disclaimer: 'Educational analysis only. Not financial advice. Past performance does not guarantee future results.'
+    };
+    downloadBlob(JSON.stringify(payload, null, 2), `trading_analysis_${r.symbol}_${new Date().toISOString().slice(0, 10)}.json`, 'application/json');
+  });
+
+  $('exportCsvBtn').addEventListener('click', () => {
+    if (!state.result) return;
+    const r = state.result;
+    const lines = [['type', 'rank', 'entry', 'stop', 'target', 'risk_per_unit', 'reward_per_unit', 'risk_reward', 'blended_probability', 'expected_value_per_unit', 'kelly_fraction'].join(',')];
+    r.scenarios.forEach(s => {
+      lines.push([s.type, s.rank, s.entry ?? '', s.stop ?? '', s.target ?? '', s.risk ?? '', s.reward ?? '', s.rr ?? '', s.probability ?? '', s.expectedValue ?? '', s.kelly ?? ''].join(','));
+    });
+    downloadBlob(lines.join('\n'), `trading_scenarios_${r.symbol}_${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv');
+  });
+
+  $('printBtn').addEventListener('click', () => window.print());
+
+  function downloadBlob(content, filename, mime) {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
+  // ------------------------------------------------------------------
+  // Load a bundled example on first paint so the empty state isn't blank
+  // ------------------------------------------------------------------
+  setStatus('Upload a CSV, paste data, or generate a sample series to begin.');
+})();
+
+</script>
+</body>
+</html>
