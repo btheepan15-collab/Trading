@@ -1,23 +1,16 @@
-import os
-from http.server import BaseHTTPRequestHandler
+﻿import os
+from flask import Flask, send_from_directory
 
-class handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html; charset=utf-8')
-        self.end_headers()
-        
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        parent_dir = os.path.dirname(current_dir)
-        html_path = os.path.join(parent_dir, 'index.html')
-        if not os.path.exists(html_path):
-            html_path = os.path.join(current_dir, 'index.html')
-            
-        if os.path.exists(html_path):
-            with open(html_path, 'rb') as f:
-                self.wfile.write(f.read())
-        else:
-            self.wfile.write(b"<h1>Trading AI Dashboard</h1>")
-        return
+app = Flask(__name__)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-app = handler
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def home(path):
+    target = os.path.join(ROOT_DIR, path)
+    if path != "" and os.path.exists(target) and not os.path.isdir(target):
+        return send_from_directory(ROOT_DIR, path)
+    return send_from_directory(ROOT_DIR, 'index.html')
+
+if __name__ == '__main__':
+    app.run(port=5000, debug=True)
